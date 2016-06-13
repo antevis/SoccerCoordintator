@@ -79,9 +79,18 @@ func teamsWithLackOfPlayersIndexes(threshold: Int, skilled: Bool) -> [Int] {
 	return result
 }
 
-
+func candidateTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> [[String: AnyObject]] {
+	
+	var candidateTeam: [[String: AnyObject]] = []
+	candidateTeam.append(player)
+	candidateTeam += team
+	
+	return candidateTeam
+}
 
 func teamWithMinimumHeightDeviationIndex(player: [String: AnyObject], indexes: [Int]) -> Int {
+	
+	
 	
 	var tempTeam: [[String: AnyObject]] = []
 	tempTeam.append(player)
@@ -108,14 +117,85 @@ func teamWithMinimumHeightDeviationIndex(player: [String: AnyObject], indexes: [
 	return minDeviationTeamIndex
 }
 
-
-let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
-let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
-
-
-func distributeWithMinimumHeightDeviation() {
+func teamWithMinimumHeightDeviationIndexNotExceeding(threshold inches: Double, player: [String: AnyObject], indexes: [Int]) -> Int? {
 	
-	for player in soccerLeague {
+	var tempTeam: [[String: AnyObject]] = []
+	tempTeam.append(player)
+	tempTeam += teams[indexes[0]]
+	
+	var currentMin = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam))
+	var minDeviationTeamIndex = indexes[0]
+	
+	for index in indexes {
+		
+		tempTeam = []
+		tempTeam.append(player)
+		tempTeam += teams[index]
+		
+		let tempMin = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam))
+		
+		if tempMin < currentMin {
+			
+			currentMin = tempMin
+			minDeviationTeamIndex = index
+		}
+	}
+	
+	if currentMin <= inches {
+		
+		return minDeviationTeamIndex
+		
+	} else {
+	
+		return nil
+	}
+}
+
+func distributeWithin(threshold inches: Double, undistributed players: [[String: AnyObject]]) {
+	
+	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
+	let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
+	
+	var undistributedPlayers: [[String: AnyObject]] = []
+	
+	for player in players {
+		
+		let skilled = player["Experience"] as! Bool
+		
+		let playerCountTarget: Int = skilled ? skilledPlayersPerTeamTarget : newbiePerTeamTarget
+		
+		let candidateTeamsIndexes = teamsWithLackOfPlayersIndexes(playerCountTarget, skilled: skilled)
+		
+		if let teamIndex = teamWithMinimumHeightDeviationIndexNotExceeding(threshold: 1.5, player: player, indexes: candidateTeamsIndexes) {
+			
+			teams[teamIndex].append(player)
+			
+		} else {
+			
+			undistributedPlayers.append(player)
+		}
+	}
+	
+	//Evaluate to avoid infinite recursion if undistributed players count didn't change
+	if(undistributedPlayers.count < players.count && undistributedPlayers.count > 0) {
+	
+		distributeWithin(threshold: inches, undistributed: undistributedPlayers)
+		
+	} else {
+		
+		//Since kid is undistributable within 1.5 inch threshold, force distribution to the team with minimal height deviation.
+		distributeWithMinimumHeightDeviation(undistributedPlayers)
+	}
+	
+}
+
+
+func distributeWithMinimumHeightDeviation(players: [[String: AnyObject]]) {
+	
+	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
+	let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
+	
+	for player in players {
 		
 		//Getting player's experience
 		let skilled = player["Experience"] as! Bool
@@ -130,13 +210,15 @@ func distributeWithMinimumHeightDeviation() {
 		
 		//Picking an array index of team with minimum height deviation AFTER the candidate would have been potentially added to it
 		let teamIndex = teamWithMinimumHeightDeviationIndex(player, indexes: candidateTeamsIndexes)
-		
 		//Distribute player to the team with minimal Height deviation.
 		teams[teamIndex].append(player)
 	}
 }
 
 func distribute() {
+	
+	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
+	let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
 	
 	for player in soccerLeague {
 		
@@ -154,44 +236,87 @@ func distribute() {
 	}
 }
 
+//Distribute not considering height deviation
 
-distribute() //Excluding height deviation
+distribute()
 
-teams[0]
-teams[1]
-teams[2]
+sharks = teams[0]
+dragons = teams[1]
+raptors = teams[2]
 
-getPlayersAvgHeight(teams[0]) - getPlayersAvgHeight(soccerLeague)
-getPlayersAvgHeight(teams[1]) - getPlayersAvgHeight(soccerLeague)
-getPlayersAvgHeight(teams[2]) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(sharks) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(dragons) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(raptors) - getPlayersAvgHeight(soccerLeague)
 
-playersCountBySkill(teams[0], skilled: true)
-playersCountBySkill(teams[1], skilled: true)
-playersCountBySkill(teams[2], skilled: true)
+playersCountBySkill(sharks, skilled: true)
+playersCountBySkill(dragons, skilled: true)
+playersCountBySkill(raptors, skilled: true)
 
-playersCountBySkill(teams[0], skilled: false)
-playersCountBySkill(teams[1], skilled: false)
-playersCountBySkill(teams[2], skilled: false)
+playersCountBySkill(sharks, skilled: false)
+playersCountBySkill(dragons, skilled: false)
+playersCountBySkill(raptors, skilled: false)
 
 
 teams = [sharks,dragons,raptors]
 
-distributeWithMinimumHeightDeviation() //Distribute with minimizing height deviaton
+//Distribute with minimizing height deviaton
 
-teams[0]
-teams[1]
-teams[2]
+sharks.removeAll()
+dragons.removeAll()
+raptors.removeAll()
 
-getPlayersAvgHeight(teams[0]) - getPlayersAvgHeight(soccerLeague)
-getPlayersAvgHeight(teams[1]) - getPlayersAvgHeight(soccerLeague)
-getPlayersAvgHeight(teams[2]) - getPlayersAvgHeight(soccerLeague)
+teams = [sharks,dragons,raptors]
 
-playersCountBySkill(teams[0], skilled: true)
-playersCountBySkill(teams[1], skilled: true)
-playersCountBySkill(teams[2], skilled: true)
+distributeWithMinimumHeightDeviation(soccerLeague)
 
-playersCountBySkill(teams[0], skilled: false)
-playersCountBySkill(teams[1], skilled: false)
-playersCountBySkill(teams[2], skilled: false)
+sharks = teams[0]
+dragons = teams[1]
+raptors = teams[2]
+
+getPlayersAvgHeight(sharks) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(dragons) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(raptors) - getPlayersAvgHeight(soccerLeague)
+
+playersCountBySkill(sharks, skilled: true)
+playersCountBySkill(dragons, skilled: true)
+playersCountBySkill(raptors, skilled: true)
+
+playersCountBySkill(sharks, skilled: false)
+playersCountBySkill(dragons, skilled: false)
+playersCountBySkill(raptors, skilled: false)
+
+
+//Distribute with minimizing height deviaton within threshold
+
+sharks.removeAll()
+dragons.removeAll()
+raptors.removeAll()
+
+teams = [sharks,dragons,raptors]
+
+distributeWithin(threshold: 1.5, undistributed: soccerLeague)
+
+sharks = teams[0]
+dragons = teams[1]
+raptors = teams[2]
+
+getPlayersAvgHeight(sharks)
+getPlayersAvgHeight(dragons)
+getPlayersAvgHeight(raptors)
+
+getPlayersAvgHeight(sharks) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(dragons) - getPlayersAvgHeight(soccerLeague)
+getPlayersAvgHeight(raptors) - getPlayersAvgHeight(soccerLeague)
+
+playersCountBySkill(sharks, skilled: true)
+playersCountBySkill(dragons, skilled: true)
+playersCountBySkill(raptors, skilled: true)
+
+playersCountBySkill(sharks, skilled: false)
+playersCountBySkill(dragons, skilled: false)
+playersCountBySkill(raptors, skilled: false)
+
+
+
 
 
