@@ -88,23 +88,16 @@ func candidateTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> 
 	return candidateTeam
 }
 
-func teamWithMinimumHeightDeviationIndex(player: [String: AnyObject], indexes: [Int]) -> Int {
+func teamWithMinimumHeightDeviationIndex(player: [String: AnyObject], indexes: [Int]) -> (Int, Double) {
 	
-	
-	
-	var tempTeam: [[String: AnyObject]] = []
-	tempTeam.append(player)
-	tempTeam += teams[indexes[0]]
-	
+	var tempTeam = candidateTeam(player, team: teams[indexes[0]])
 	var currentMin = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam))
 	var minDeviationTeamIndex = indexes[0]
 	
 	for index in indexes {
 		
-		tempTeam = []
-		tempTeam.append(player)
-		tempTeam += teams[index]
-		
+		tempTeam = candidateTeam(player, team: teams[index])
+
 		let tempMin = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam))
 		
 		if tempMin < currentMin {
@@ -114,36 +107,16 @@ func teamWithMinimumHeightDeviationIndex(player: [String: AnyObject], indexes: [
 		}
 	}
 	
-	return minDeviationTeamIndex
+	return (minDeviationTeamIndex, currentMin)
 }
 
 func teamWithMinimumHeightDeviationIndexNotExceeding(threshold inches: Double, player: [String: AnyObject], indexes: [Int]) -> Int? {
 	
-	var tempTeam: [[String: AnyObject]] = []
-	tempTeam.append(player)
-	tempTeam += teams[indexes[0]]
+	let (minIndex, minDeviation) = teamWithMinimumHeightDeviationIndex(player, indexes: indexes)
 	
-	var currentMin = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam))
-	var minDeviationTeamIndex = indexes[0]
-	
-	for index in indexes {
+	if minDeviation <= inches {
 		
-		tempTeam = []
-		tempTeam.append(player)
-		tempTeam += teams[index]
-		
-		let tempMin = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam))
-		
-		if tempMin < currentMin {
-			
-			currentMin = tempMin
-			minDeviationTeamIndex = index
-		}
-	}
-	
-	if currentMin <= inches {
-		
-		return minDeviationTeamIndex
+		return minIndex
 		
 	} else {
 	
@@ -151,20 +124,34 @@ func teamWithMinimumHeightDeviationIndexNotExceeding(threshold inches: Double, p
 	}
 }
 
-func distributeWithin(threshold inches: Double, undistributed players: [[String: AnyObject]]) {
+func getCandidateTeamsIndexes(player: [String: AnyObject]) -> [Int] {
 	
 	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
 	let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
 	
+	//Getting player's experience
+	let skilled = player["Experience"] as! Bool
+	
+	//Getting the number of required players by given type
+	let playerCountTarget: Int = skilled ? skilledPlayersPerTeamTarget : newbiePerTeamTarget
+	
+	//Getting an array of indexes of uncomplete teams.
+	//It is safe to assume the array would have at least 1 element at this point with a strongly-typed collection of given specification of players:
+	//entire collection and skilled players are both evenly divisible by the number of teams.
+	return teamsWithLackOfPlayersIndexes(playerCountTarget, skilled: skilled)
+	
+}
+
+
+//Distribution
+
+func distributeWithin(threshold inches: Double, undistributed players: [[String: AnyObject]]) {
+
 	var undistributedPlayers: [[String: AnyObject]] = []
 	
 	for player in players {
 		
-		let skilled = player["Experience"] as! Bool
-		
-		let playerCountTarget: Int = skilled ? skilledPlayersPerTeamTarget : newbiePerTeamTarget
-		
-		let candidateTeamsIndexes = teamsWithLackOfPlayersIndexes(playerCountTarget, skilled: skilled)
+		let candidateTeamsIndexes = getCandidateTeamsIndexes(player)
 		
 		if let teamIndex = teamWithMinimumHeightDeviationIndexNotExceeding(threshold: 1.5, player: player, indexes: candidateTeamsIndexes) {
 			
@@ -176,7 +163,7 @@ func distributeWithin(threshold inches: Double, undistributed players: [[String:
 		}
 	}
 	
-	//Evaluate to avoid infinite recursion if undistributed players count didn't change
+	//Evaluate to avoid infinite recursion if undistributed players number didn't change
 	if(undistributedPlayers.count < players.count && undistributedPlayers.count > 0) {
 	
 		distributeWithin(threshold: inches, undistributed: undistributedPlayers)
@@ -192,44 +179,25 @@ func distributeWithin(threshold inches: Double, undistributed players: [[String:
 
 func distributeWithMinimumHeightDeviation(players: [[String: AnyObject]]) {
 	
-	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
-	let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
-	
 	for player in players {
 		
-		//Getting player's experience
-		let skilled = player["Experience"] as! Bool
-		
-		//Getting the number of required players by given type
-		let playerCountTarget: Int = skilled ? skilledPlayersPerTeamTarget : newbiePerTeamTarget
-		
-		//Getting an array of indexes of uncomplete teams.
-		//It is safe to assume the array would have at least 1 element at this point with a strongly-typed collection of given specification of players:
-		//entire collection and skilled players are both evenly divisible by the number of teams.
-		let candidateTeamsIndexes = teamsWithLackOfPlayersIndexes(playerCountTarget, skilled: skilled)
+		let candidateTeamsIndexes = getCandidateTeamsIndexes(player)
 		
 		//Picking an array index of team with minimum height deviation AFTER the candidate would have been potentially added to it
-		let teamIndex = teamWithMinimumHeightDeviationIndex(player, indexes: candidateTeamsIndexes)
+		let teamIndex = teamWithMinimumHeightDeviationIndex(player, indexes: candidateTeamsIndexes).0
+		
 		//Distribute player to the team with minimal Height deviation.
 		teams[teamIndex].append(player)
 	}
 }
 
+
+
 func distribute() {
-	
-	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
-	let newbiePerTeamTarget = soccerLeague.count / teams.count - skilledPlayersPerTeamTarget
 	
 	for player in soccerLeague {
 		
-		//Getting player's experience
-		let skilled = player["Experience"] as! Bool
-		
-		//Getting the number of required players by given type
-		let playerCountTarget: Int = skilled ? skilledPlayersPerTeamTarget : newbiePerTeamTarget
-		
-		//Getting an array of indexes of uncomplete teams
-		let candidateTeamsIndexes = teamsWithLackOfPlayersIndexes(playerCountTarget, skilled: skilled)
+		let candidateTeamsIndexes = getCandidateTeamsIndexes(player)
 		
 		//Distribute player to the first available team. It is safe to assume the array would have at least 1 element at this point with a strongly-typed collection of given specification of players: entire collection and skilled players are both evenly divisible by the number of teams.
 		teams[candidateTeamsIndexes[0]].append(player)
@@ -238,7 +206,7 @@ func distribute() {
 
 //Distribute not considering height deviation
 
-distribute()
+//distribute()
 
 sharks = teams[0]
 dragons = teams[1]
@@ -267,7 +235,7 @@ raptors.removeAll()
 
 teams = [sharks,dragons,raptors]
 
-distributeWithMinimumHeightDeviation(soccerLeague)
+//distributeWithMinimumHeightDeviation(soccerLeague)
 
 sharks = teams[0]
 dragons = teams[1]
