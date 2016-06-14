@@ -210,6 +210,11 @@ func getLeastHeightDeviationTeamsIndexes(player: [String: AnyObject], teamsIndex
 	return result
 }
 
+func getStdDeviation() {
+	
+	
+}
+
 func fillArrayBy(criteria: Double, dict: [Int: Double]) -> [Int]{
 	
 	var result: [Int] = []
@@ -276,9 +281,9 @@ let sharksAvgHeight = getPlayersAvgHeight(sharks)
 let dragonsAvgHeight = getPlayersAvgHeight(dragons)
 let raptorsAvgheight = getPlayersAvgHeight(raptors)
 
-let sharksDeviation = sharksAvgHeight - leagueAvgHeight
-let dragonsDeviation = dragonsAvgHeight - leagueAvgHeight
-let raptorsDeviation = raptorsAvgheight - leagueAvgHeight
+let sharksHeightDiff = sharksAvgHeight - leagueAvgHeight
+let dragonsHeightDiff = dragonsAvgHeight - leagueAvgHeight
+let raptorsHeightDiff = raptorsAvgheight - leagueAvgHeight
 
 
 
