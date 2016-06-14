@@ -26,7 +26,18 @@ let soccerLeague: [[String: AnyObject]] = [
 	["Name": "Arnold Willis","Height": 43,"Experience": false,"Guardians": "Claire Willis"],
 	["Name": "Phillip Helm","Height": 44,"Experience": true,"Guardians": "Thomas Helm and Eva Jones"],
 	["Name": "Les Clay","Height": 42,"Experience": true,"Guardians": "Wynonna Brown"],
-	["Name": "Herschel Krustofski","Height": 45,"Experience": true,"Guardians": "Hyman and Rachel Krustofski"]
+	["Name": "Herschel Krustofski","Height": 45,"Experience": true,"Guardians": "Hyman and Rachel Krustofski"],
+	
+	["Name": "Arnold Willis","Height": 43,"Experience": false,"Guardians": "Claire Willis"],
+	["Name": "Phillip Helm","Height": 44,"Experience": true,"Guardians": "Thomas Helm and Eva Jones"],
+	["Name": "Les Clay","Height": 42,"Experience": true,"Guardians": "Wynonna Brown"],
+	["Name": "Herschel Krustofski","Height": 45,"Experience": true,"Guardians": "Hyman and Rachel Krustofski"],
+	["Name": "Kimmy Stein","Height": 41,"Experience": false,"Guardians": "Bill and Hillary Stein"],
+	["Name": "Kimmy Stein","Height": 41,"Experience": false,"Guardians": "Bill and Hillary Stein"],
+	["Name": "Kimmy Stein","Height": 41,"Experience": false,"Guardians": "Bill and Hillary Stein"],
+	["Name": "Herschel Krustofski","Height": 45,"Experience": true,"Guardians": "Hyman and Rachel Krustofski"],
+	["Name": "Herschel Krustofski","Height": 45,"Experience": true,"Guardians": "Hyman and Rachel Krustofski"],
+
 ]
 
 //Functions
@@ -64,20 +75,7 @@ func playersCountBySkill(team: [[String: AnyObject]], skilled: Bool) -> Int {
 }
 
 
-func teamsWithLackOfPlayersIndexes(threshold: Int, skilled: Bool) -> [Int] {
-	
-	var result: [Int] = []
-	
-	for i in 0..<teams.count {
-		
-		if playersCountBySkill(teams[i], skilled: skilled) < threshold {
-			
-			result.append(i)
-		}
-	}
-	
-	return result
-}
+
 
 func candidateTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> [[String: AnyObject]] {
 	
@@ -124,6 +122,128 @@ func teamWithMinimumHeightDeviationIndexNotExceeding(threshold inches: Double, p
 	}
 }
 
+func teamsWithLackOfPlayersByTypeIndexes(threshold: Int, skilled: Bool) -> [Int]? {
+	
+	var result: [Int]?
+	
+	for i in 0..<teams.count {
+		
+		if playersCountBySkill(teams[i], skilled: skilled) < threshold {
+			
+			if result == nil {
+				
+				result = []
+			}
+			
+			result!.append(i)
+		}
+	}
+	
+	return result
+}
+
+func teamsWithLackOfPlayersIndexes(threshold: Int) -> [Int]? {
+	
+	var result: [Int]?
+	
+	for i in 0..<teams.count {
+		
+		if teams[i].count < threshold {
+			
+			if result == nil {
+				
+				result = []
+			}
+			
+			result!.append(i)
+		}
+	}
+	
+	return result
+}
+
+func teamsWithMinimumSkilledPlayers() -> [Int]? {
+	
+	var result: [Int]?
+	
+	var skilledCountByTeam: [Int] = []
+	
+	for team in teams {
+		
+		skilledCountByTeam.append(playersCountBySkill(team, skilled: true))
+	}
+	
+	if skilledCountByTeam.minElement()! == skilledCountByTeam.maxElement()! {
+		
+		return nil
+		
+	} else {
+		
+		for i in 0..<skilledCountByTeam.count {
+			
+			if skilledCountByTeam[i] == skilledCountByTeam.minElement()! {
+				
+				if result == nil {
+					
+					result = []
+				}
+				
+				result!.append(i)
+			}
+		}
+	}
+	
+	return result
+}
+
+func teamsWithMinimumHeightDeviation(player: [String: AnyObject]) -> [Int]? {
+	
+	var result: [Int]?
+	
+	var heightDeviationByTeam: [Double] = []
+	
+	for team in teams {
+		
+		let tempTeam = candidateTeam(player, team: team)
+		
+		heightDeviationByTeam.append(abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(tempTeam)))
+	}
+	
+	if heightDeviationByTeam.minElement()! == heightDeviationByTeam.maxElement()! {
+		
+		return nil
+		
+	} else {
+		
+		for i in 0..<heightDeviationByTeam.count {
+			
+			if heightDeviationByTeam[i] == heightDeviationByTeam.minElement()! {
+				
+				if result == nil {
+					
+					result = []
+				}
+				
+				result!.append(i)
+			}
+		}
+	}
+	
+	return result
+}
+
+func allTeamsIndexes() -> [Int] {
+	
+	var result: [Int] = []
+	
+	for i in 0..<teams.count {
+		
+		result.append(i)
+	}
+	
+	return result
+}
+
 func getCandidateTeamsIndexes(player: [String: AnyObject]) -> [Int] {
 	
 	let skilledPlayersPerTeamTarget = playersCountBySkill(soccerLeague, skilled: true) / teams.count
@@ -135,10 +255,26 @@ func getCandidateTeamsIndexes(player: [String: AnyObject]) -> [Int] {
 	//Getting the number of required players by given type
 	let playerCountTarget: Int = skilled ? skilledPlayersPerTeamTarget : newbiePerTeamTarget
 	
-	//Getting an array of indexes of uncomplete teams.
-	//It is safe to assume the array would have at least 1 element at this point with a strongly-typed collection of given specification of players:
-	//entire collection and skilled players are both evenly divisible by the number of teams.
-	return teamsWithLackOfPlayersIndexes(playerCountTarget, skilled: skilled)
+	if let indexes = teamsWithLackOfPlayersByTypeIndexes(playerCountTarget, skilled: skilled) {
+		
+		return indexes
+		
+	} else if let indexes = teamsWithLackOfPlayersIndexes(soccerLeague.count / teams.count){
+		
+		return indexes
+		
+	} else if let indexes = teamsWithMinimumSkilledPlayers() {
+		
+		return indexes
+		
+	} else if let indexes = teamsWithMinimumHeightDeviation(player) {
+		
+		return indexes
+		
+	} else {
+		
+		return allTeamsIndexes()
+	}
 	
 }
 
@@ -263,6 +399,8 @@ raptors.removeAll()
 teams = [sharks,dragons,raptors]
 
 distributeWithin(threshold: 1.5, undistributed: soccerLeague)
+//distributeWithMinimumHeightDeviation(soccerLeague)
+//distribute()
 
 sharks = teams[0]
 dragons = teams[1]
@@ -275,6 +413,13 @@ getPlayersAvgHeight(raptors)
 getPlayersAvgHeight(sharks) - getPlayersAvgHeight(soccerLeague)
 getPlayersAvgHeight(dragons) - getPlayersAvgHeight(soccerLeague)
 getPlayersAvgHeight(raptors) - getPlayersAvgHeight(soccerLeague)
+
+playersCountBySkill(soccerLeague, skilled: true)
+playersCountBySkill(soccerLeague, skilled: false)
+
+sharks.count
+dragons.count
+raptors.count
 
 playersCountBySkill(sharks, skilled: true)
 playersCountBySkill(dragons, skilled: true)
