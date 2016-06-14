@@ -36,6 +36,7 @@ var dolphins: [[String: AnyObject]] = []
 var teams: [[[String: AnyObject]]] = [sharks, dragons, raptors]
 //teams.append(dolphins)
 
+
 func distribute(players: [[String: AnyObject]], withinInches threshold: Double?) {
 	
 	var undistributedPlayers: [[String: AnyObject]] = []
@@ -57,21 +58,22 @@ func distribute(players: [[String: AnyObject]], withinInches threshold: Double?)
 	//Recursive distribution. Relying on the fact that following distributions would affect teams' avg height and let undistributed fit within threshold
 	if undistributedPlayers.count > 0 {
 		
-		//previous distribution succeeded, try new distribution with height threshold
+		//previous distribution attempt yielded some results,
 		if undistributedPlayers.count < players.count {
 			
+			//trying new distribution with height threshold
 			distribute(undistributedPlayers, withinInches: threshold)
 			
 		//Previous distribution didn't reduce undistributed players' count, thus dropping the threshold
 		} else {
 			
-			//force distribution without threshold, but yet to a team with a minimal height deviation
+			//force distribution without threshold, but to a team with a minimal height deviation
 			distribute(undistributedPlayers, withinInches: nil)
 		}
 	}
 }
 
-//There's probably a better way to obtain an array of array's indexes, but I haven't found one.
+//There's probably a better way to obtain an array of array's indexes
 func allTeamsIndexes() -> [Int] {
 	
 	var result: [Int] = []
@@ -107,7 +109,7 @@ func playersCountBySkill(team: [[String: AnyObject]], skilled: Bool?) -> Int {
 	return result
 }
 
-func getPlayersAvgHeight(players: [[String: AnyObject]]) -> Double {
+func getPlayersMeanHeight(players: [[String: AnyObject]]) -> Double {
 	
 	if players.count > 0 {
 		
@@ -125,6 +127,26 @@ func getPlayersAvgHeight(players: [[String: AnyObject]]) -> Double {
 		return 0.0
 	}
 }
+
+func mean(values: [Double]) -> Double {
+	
+	if values.count > 0 {
+		
+		var total = 0.0
+		
+		for value in values {
+			
+			total += value
+		}
+		
+		return total / Double(values.count)
+		
+	} else {
+		
+		return 0.0
+	}
+}
+
 
 
 func getLeastPopulatedTeamsIndexesByType(teamsIndexes: [Int], skilled: Bool?) -> [Int] {
@@ -158,7 +180,8 @@ func getLeastPopulatedTeamsIndexesByType(teamsIndexes: [Int], skilled: Bool?) ->
 	return result
 }
 
-func allegedTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> [[String: AnyObject]] {
+//a 'virtual' team with the candidate player added. Used to avaulate parameters after potential player's distribution to it.
+func virtualTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> [[String: AnyObject]] {
 	
 	var virtualTeam = team
 	virtualTeam.append(player)
@@ -174,10 +197,9 @@ func getLeastHeightDeviationTeamsIndexes(player: [String: AnyObject], teamsIndex
 	
 	for i in 0..<teamsIndexes.count {
 		
-		let virtualTeam = allegedTeam(player, team: teams[teamsIndexes[i]])
+		let vTeam = virtualTeam(player, team: teams[teamsIndexes[i]])
 		
-		//TODO: change here for standard deviation among all teams
-		let deviation = abs(getPlayersAvgHeight(soccerLeague) - getPlayersAvgHeight(virtualTeam))
+		let deviation = abs(getPlayersMeanHeight(soccerLeague) - getPlayersMeanHeight(vTeam))
 		
 		heightDeviationByTeam.updateValue(deviation, forKey: teamsIndexes[i])
 	}
@@ -190,30 +212,28 @@ func getLeastHeightDeviationTeamsIndexes(player: [String: AnyObject], teamsIndex
 		
 		if let threshold = threshold {
 			
-			if minDeviation < threshold {
+			if minDeviation <= threshold {
 				
+				//Threshold exists. Filling result with teams' indexes with minimum height deviation not exceeding threshold
+				//In theory, there can be multiple teams with the same minimum height deviation, all of them go th the result array.
+				//In most cases, it is going to be an array of a single element. In any case, we'll pick first ([0]-th) element.
 				result = fillArrayBy(minDeviation, dict: heightDeviationByTeam)
 				
-			} else {
-				
-				return result
 			}
 			
 		} else {
 			
+			//threshold isn't defined, filling with teams' indexes with minimum height deviations.
 			result = fillArrayBy(minDeviation, dict: heightDeviationByTeam)
 		}
-		
-		
 	}
+	
+	//The absence of minDeviation signals the inability to obtain minElement from deviations,
+	//which can only be due to zero length of the array, which in turn can only be due to zero length of the 'teamsIndexes' function argument.
 	
 	return result
 }
 
-func getStdDeviation() {
-	
-	
-}
 
 func fillArrayBy(criteria: Double, dict: [Int: Double]) -> [Int]{
 	
@@ -253,8 +273,8 @@ func getSuitableTeamsFor(player: [String: AnyObject], withinInches threshold: Do
 	teamsIndexes = getLeastPopulatedTeamsIndexesByType(teamsIndexes, skilled: nil)
 	
 	//3. From that array, pick an array of teams with the least height deviaton (optionally less than threshold) from other teams
-	//AFTER player allegedly distributed to the team.
-	//Alleded addition probably won't affect the height deviation, but we don't take chances.
+	//AFTER player possible distribution to the team.
+	//This 'would-be' distribution probably won't affect the height deviation, but we don't take chances.
 	teamsIndexes = getLeastHeightDeviationTeamsIndexes(player, teamsIndexes: teamsIndexes, threshold: threshold)
 	
 	return teamsIndexes
@@ -275,11 +295,11 @@ playersCountBySkill(sharks, skilled: false)
 playersCountBySkill(dragons, skilled: false)
 playersCountBySkill(raptors, skilled: false)
 
-let leagueAvgHeight = getPlayersAvgHeight(soccerLeague)
+let leagueAvgHeight = getPlayersMeanHeight(soccerLeague)
 
-let sharksAvgHeight = getPlayersAvgHeight(sharks)
-let dragonsAvgHeight = getPlayersAvgHeight(dragons)
-let raptorsAvgheight = getPlayersAvgHeight(raptors)
+let sharksAvgHeight = getPlayersMeanHeight(sharks)
+let dragonsAvgHeight = getPlayersMeanHeight(dragons)
+let raptorsAvgheight = getPlayersMeanHeight(raptors)
 
 let sharksHeightDiff = sharksAvgHeight - leagueAvgHeight
 let dragonsHeightDiff = dragonsAvgHeight - leagueAvgHeight
