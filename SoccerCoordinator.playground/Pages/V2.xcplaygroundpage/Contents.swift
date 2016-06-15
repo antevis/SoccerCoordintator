@@ -1,9 +1,16 @@
 
 import Foundation
 
+//an empty collection variable to hold all the players’ data.
 var soccerLeague: [[String: AnyObject]] = []
 
-
+//manually enter the player data. Although, collection could be declared as constant and initialized in a single statement:
+//let soccerLeague: [[String: AnyObject]] = [
+//	["Name": "Joe Smith","Height": 42,"Experience": true,"Guardians": "Jim and Jan Smith"],
+//	["Name": "Jill Tanner","Height": 36,"Experience": true,"Guardians": "Clara Tanner"],
+//	...
+//	
+//]
 soccerLeague.append(["Name": "Joe Smith","Height": 42,"Experience": true,"Guardians": "Jim and Jan Smith"])
 soccerLeague.append(["Name": "Jill Tanner","Height": 36,"Experience": true,"Guardians": "Clara Tanner"])
 soccerLeague.append(["Name": "Bill Bon","Height": 43,"Experience": true,"Guardians": "Sara and Jenny Bon"])
@@ -23,27 +30,18 @@ soccerLeague.append(["Name": "Phillip Helm","Height": 44,"Experience": true,"Gua
 soccerLeague.append(["Name": "Les Clay","Height": 42,"Experience": true,"Guardians": "Wynonna Brown"])
 soccerLeague.append(["Name": "Herschel Krustofski","Height": 45,"Experience": true,"Guardians": "Hyman and Rachel Krustofski"])
 
-
-let height = "Height"
-let experienced = "Experience"
 let threshold = 1.5
 
-var sharks: [[String: AnyObject]] = []
-var dragons: [[String: AnyObject]] = []
-var raptors: [[String: AnyObject]] = []
-var dolphins: [[String: AnyObject]] = []
+var teams: [[[String: AnyObject]]] = [[], [], []]
 
-var teams: [[[String: AnyObject]]] = [sharks, dragons, raptors]
-//teams.append(dolphins)
-
-
+//The idea is to get an array of indexes of teams with equal conditions where kid could be potentially distributed, and pick the first ([0]-th) element.
 func distribute(players: [[String: AnyObject]], withinInches threshold: Double?) {
 	
 	var undistributedPlayers: [[String: AnyObject]] = []
 	
 	for player in players {
 		
-		let teamIndexes = getSuitableTeamsFor(player, withinInches: threshold)
+		let teamIndexes = getSuitableTeamsFor(players, teams: teams, player: player, withinInches: threshold)
 		
 		if teamIndexes.count > 0 {
 		
@@ -55,7 +53,7 @@ func distribute(players: [[String: AnyObject]], withinInches threshold: Double?)
 		}
 	}
 	
-	//Recursive distribution. Relying on the fact that following distributions would affect teams' avg height and let undistributed fit within threshold
+	//Recursive distribution. Relying on the fact that following distributions would affect teams' mean height and let undistributed fit within threshold
 	if undistributedPlayers.count > 0 {
 		
 		//previous distribution attempt yielded some results,
@@ -74,7 +72,7 @@ func distribute(players: [[String: AnyObject]], withinInches threshold: Double?)
 }
 
 //There's probably a better way to obtain an array of array's indexes
-func allTeamsIndexes() -> [Int] {
+func allTeamsIndexes(teams: [[[String: AnyObject]]]) -> [Int] {
 	
 	var result: [Int] = []
 	
@@ -95,7 +93,7 @@ func playersCountBySkill(team: [[String: AnyObject]], skilled: Bool?) -> Int {
 		if let skilled = skilled {
 			
 			//increment for specific type of player
-			if player[experienced] as! Bool == skilled {
+			if player["Experience"] as! Bool == skilled {
 				result += 1
 			}
 			
@@ -147,9 +145,24 @@ func mean(values: [Double]) -> Double {
 	}
 }
 
+//Auxilliary method to return an [Int] from given [Int: Double] where dictionary values are equal to given criteria
+func fillArrayBy(criteria: Double, dict: [Int: Double]) -> [Int] {
+	
+	var result: [Int] = []
+	
+	for item in dict {
+		
+		if item.1 == criteria {
+			
+			result.append(item.0)
+		}
+	}
+	
+	return result
+}
 
 
-func getLeastPopulatedTeamsIndexesByType(teamsIndexes: [Int], skilled: Bool?) -> [Int] {
+func getLeastPopulatedTeamsIndexesByType(teams: [[[String: AnyObject]]], teamsIndexes: [Int], skilled: Bool?) -> [Int] {
 	
 	var result: [Int] = []
 	
@@ -180,7 +193,7 @@ func getLeastPopulatedTeamsIndexesByType(teamsIndexes: [Int], skilled: Bool?) ->
 	return result
 }
 
-//a 'virtual' team with the candidate player added. Used to avaulate parameters after potential player's distribution to it.
+//a 'virtual' team with the candidate player added. Used to avaulate parameters after potential player's assignment to it.
 func virtualTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> [[String: AnyObject]] {
 	
 	var virtualTeam = team
@@ -189,7 +202,7 @@ func virtualTeam(player: [String: AnyObject], team: [[String: AnyObject]]) -> [[
 	return virtualTeam
 }
 
-func getLeastHeightDeviationTeamsIndexes(player: [String: AnyObject], teamsIndexes: [Int], threshold: Double?) -> [Int] {
+func getLeastHeightDeviationTeamsIndexes(league: [[String: AnyObject]], player: [String: AnyObject], teamsIndexes: [Int], threshold: Double?, teams: [[[String: AnyObject]]]) -> [Int] {
 	
 	var result: [Int] = []
 	
@@ -199,7 +212,7 @@ func getLeastHeightDeviationTeamsIndexes(player: [String: AnyObject], teamsIndex
 		
 		let vTeam = virtualTeam(player, team: teams[teamsIndexes[i]])
 		
-		let deviation = abs(getPlayersMeanHeight(soccerLeague) - getPlayersMeanHeight(vTeam))
+		let deviation = abs(getPlayersMeanHeight(league) - getPlayersMeanHeight(vTeam))
 		
 		heightDeviationByTeam.updateValue(deviation, forKey: teamsIndexes[i])
 	}
@@ -235,76 +248,95 @@ func getLeastHeightDeviationTeamsIndexes(player: [String: AnyObject], teamsIndex
 }
 
 
-func fillArrayBy(criteria: Double, dict: [Int: Double]) -> [Int]{
+func getSuitableTeamsFor(league: [[String: AnyObject]], teams: [[[String: AnyObject]]], player: [String: AnyObject], withinInches threshold: Double?) -> [Int] {
 	
-	var result: [Int] = []
 	
-	for item in dict {
-		
-		if item.1 == criteria {
-			
-			result.append(item.0)
-		}
-	}
-	
-	return result
-}
-
-
-
-func getSuitableTeamsFor(player: [String: AnyObject], withinInches threshold: Double?) -> [Int] {
-	
-	//The idea is to get an array of indexes of teams with equal conditions where kid could be potentially distributed, and pick the first ([0]) element.
 	//To ensure guaranteed distribution, there must be at least 1 element. This is being achived with the threshold declared as optional, when distribution eventually recurse to the situation when threshold been dropped.
 	//Excluding the first few steps, in general it's going to be an array of not more than 1 element
 	
-	let skilled = player[experienced] as! Bool
+	let skilled = player["Experience"] as! Bool
 	
-	var teamsIndexes: [Int] = allTeamsIndexes()
+	var teamsIndexes: [Int] = allTeamsIndexes(teams)
 	
 	if skilled {
 		
 		//1. Pick an array of teams' indexes with the least number of skilled players
-		teamsIndexes = getLeastPopulatedTeamsIndexesByType(teamsIndexes, skilled: true)
+		teamsIndexes = getLeastPopulatedTeamsIndexesByType(teams, teamsIndexes: teamsIndexes, skilled: true)
 		
 	}
 	
 	//2. From that array, pick an array of teams with the least number of total players
-	teamsIndexes = getLeastPopulatedTeamsIndexesByType(teamsIndexes, skilled: nil)
+	teamsIndexes = getLeastPopulatedTeamsIndexesByType(teams, teamsIndexes: teamsIndexes, skilled: nil)
 	
 	//3. From that array, pick an array of teams with the least height deviaton (optionally less than threshold) from other teams
 	//AFTER player possible distribution to the team.
 	//This 'would-be' distribution probably won't affect the height deviation, but we don't take chances.
-	teamsIndexes = getLeastHeightDeviationTeamsIndexes(player, teamsIndexes: teamsIndexes, threshold: threshold)
+	teamsIndexes = getLeastHeightDeviationTeamsIndexes(league, player: player, teamsIndexes: teamsIndexes, threshold: threshold, teams: teams)
 	
 	return teamsIndexes
 }
 
+func letterTo(guardian: String, playerName: String, team: String, firstPracticeDateTime: String) -> String{
+	
+	let letter = "Dear \(guardian)!\r\rTo achieve the most even distribution of players, \(playerName) has been placed to \(team), and I am pleased to invite you to the team's first prictice on \(firstPracticeDateTime).\r\rYours sincerely, Soccer team coordinator.\r\r---------------------------------------------------------"
+	
+	return letter
+}
+
+func generateLetters(allTeams: [[String: AnyObject]]) {
+	
+	for team in allTeams {
+		
+		if let theTeam = team["Team"] as? [[String: AnyObject]],
+			let teamName = team["Team Name"] as? String,
+			let fstPracticeDateTime = team["First Team Practice"] as? String {
+			
+			for player in theTeam {
+				
+				if let guardian = player["Guardians"] as? String, let playerName = player["Name"] as? String {
+					
+					let letter = letterTo(guardian, playerName: playerName, team: teamName, firstPracticeDateTime: fstPracticeDateTime)
+					
+					print(letter)
+				}
+			}
+		}
+	}
+}
+
+
 distribute(soccerLeague, withinInches: 1.5)
 
-sharks = teams[0]
-dragons = teams[1]
-raptors = teams[2]
-//dolphins = teams[3]
+//Deliberately not included in distribute function logic, due to strong typing of teams' names and practice dates.
+let sharksTeam: [String: AnyObject] = ["Team Name": "Sharks", "First Team Practice": "March 17, 3pm", "Team": teams[0]]
+let dragonsTeam: [String: AnyObject] = ["Team Name": "Dragons", "First Team Practice": "March 17, 1pm", "Team": teams[1]]
+let raptorsTeam: [String: AnyObject] = ["Team Name": "Raptors", "First Team Practice": "March 18, 1pm", "Team": teams[2]]
 
-playersCountBySkill(sharks, skilled: true)
-playersCountBySkill(dragons, skilled: true)
-playersCountBySkill(raptors, skilled: true)
+let allTeams = [sharksTeam, dragonsTeam, raptorsTeam]
 
-playersCountBySkill(sharks, skilled: false)
-playersCountBySkill(dragons, skilled: false)
-playersCountBySkill(raptors, skilled: false)
+generateLetters(allTeams)
+
+teams[0]
+teams[1]
+teams[2]
+
+playersCountBySkill(teams[0], skilled: true)
+playersCountBySkill(teams[1], skilled: true)
+playersCountBySkill(teams[2], skilled: true)
+
+playersCountBySkill(teams[0], skilled: false)
+playersCountBySkill(teams[1], skilled: false)
+playersCountBySkill(teams[2], skilled: false)
 
 let leagueAvgHeight = getPlayersMeanHeight(soccerLeague)
 
-let sharksAvgHeight = getPlayersMeanHeight(sharks)
-let dragonsAvgHeight = getPlayersMeanHeight(dragons)
-let raptorsAvgheight = getPlayersMeanHeight(raptors)
+let sharksAvgHeight = getPlayersMeanHeight(teams[0])
+let dragonsAvgHeight = getPlayersMeanHeight(teams[1])
+let raptorsAvgheight = getPlayersMeanHeight(teams[2])
 
 let sharksHeightDiff = sharksAvgHeight - leagueAvgHeight
 let dragonsHeightDiff = dragonsAvgHeight - leagueAvgHeight
 let raptorsHeightDiff = raptorsAvgheight - leagueAvgHeight
-
 
 
 
