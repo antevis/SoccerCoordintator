@@ -41,7 +41,7 @@ func distribute(players: [[String: AnyObject]], withinInches threshold: Double?)
 	
 	for player in players {
 		
-		let teamIndexes = getSuitableTeamsFor(players, teams: teams, player: player, withinInches: threshold)
+		let teamIndexes = getSuitableTeamsFor(player, league: players, teams: teams, withinInches: threshold)
 		
 		if teamIndexes.count > 0 {
 		
@@ -248,7 +248,7 @@ func getLeastHeightDeviationTeamsIndexes(league: [[String: AnyObject]], player: 
 }
 
 
-func getSuitableTeamsFor(league: [[String: AnyObject]], teams: [[[String: AnyObject]]], player: [String: AnyObject], withinInches threshold: Double?) -> [Int] {
+func getSuitableTeamsFor(player: [String: AnyObject], league: [[String: AnyObject]], teams: [[[String: AnyObject]]], withinInches threshold: Double?) -> [Int] {
 	
 	
 	//To ensure guaranteed distribution, there must be at least 1 element. This is being achived with the threshold declared as optional, when distribution eventually recurse to the situation when threshold been dropped.
